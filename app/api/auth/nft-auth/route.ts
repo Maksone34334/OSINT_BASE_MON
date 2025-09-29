@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Network configurations
+export const dynamic = "force-dynamic"
+
 const MONAD_TESTNET_RPC = "https://testnet-rpc.monad.xyz"
 const NFT_CONTRACT_ADDRESS_MONAD = "0xC1C4d4A5A384DE53BcFadB43D0e8b08966195757"
 const BASE_MAINNET_RPCS = [
@@ -22,11 +23,9 @@ async function checkNFTBalanceWithFallback(
       const balance = await checkNFTBalance(rpcUrl, contractAddress, walletAddress)
       return balance
     } catch (error) {
-      console.warn(`RPC ${rpcUrl} failed, trying next...`, error)
       continue
     }
   }
-  console.error(`All RPC endpoints failed for contract ${contractAddress}`)
   return 0
 }
 
@@ -52,7 +51,7 @@ async function checkNFTBalance(rpcUrl: string, contractAddress: string, walletAd
         ],
         id: 1,
       }),
-      signal: AbortSignal.timeout(10000), // 10 second timeout
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {
@@ -67,7 +66,6 @@ async function checkNFTBalance(rpcUrl: string, contractAddress: string, walletAd
 
     return Number.parseInt(data.result, 16)
   } catch (error) {
-    console.error(`Error checking NFT balance on ${rpcUrl}:`, error)
     throw error
   }
 }
@@ -120,7 +118,6 @@ async function checkNFTOwnership(walletAddress: string): Promise<{ hasNFT: boole
       },
     }
   } catch (error) {
-    console.error("Error checking NFT ownership:", error)
     return { hasNFT: false, details: null }
   }
 }
@@ -139,7 +136,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the signature (basic check)
     if (message !== `Login to OSINT HUB with wallet: ${walletAddress}`) {
       return NextResponse.json(
         {
@@ -152,7 +148,6 @@ export async function POST(request: NextRequest) {
     const nftCheck = await checkNFTOwnership(walletAddress)
 
     if (!nftCheck.hasNFT) {
-      console.log(`❌ NFT access denied for wallet: ${walletAddress}`)
       return NextResponse.json(
         {
           error: "Access denied: You must own an NFT from the authorized collection to use this service",
@@ -162,13 +157,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`✅ NFT ownership verified:`, nftCheck.details)
+    const sessionSecret = process.env.OSINT_SESSION_SECRET
+    if (!sessionSecret) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
 
-    // Generate session token
-    const sessionSecret = process.env.OSINT_SESSION_SECRET || "default-secret"
     const token = `${sessionSecret}_nft_${walletAddress}_${Date.now()}`
 
-    // Create user object
     const user = {
       id: walletAddress,
       login: `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`,
@@ -179,8 +174,6 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
     }
 
-    console.log(`✅ NFT holder authenticated: ${walletAddress}`)
-
     return NextResponse.json({
       success: true,
       user,
@@ -189,7 +182,6 @@ export async function POST(request: NextRequest) {
       nftDetails: nftCheck.details,
     })
   } catch (error: any) {
-    console.error("NFT authentication error:", error)
     return NextResponse.json(
       {
         error: "Internal server error",

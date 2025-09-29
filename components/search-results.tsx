@@ -5,8 +5,6 @@ interface SearchResultsProps {
 }
 
 export default function SearchResults({ results, isLoading, error }: SearchResultsProps) {
-  const isDemoMode = results && (results as any).demo_mode === true
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -33,17 +31,29 @@ export default function SearchResults({ results, isLoading, error }: SearchResul
 
   return (
     <div className="space-y-4">
-      {isDemoMode && (
-        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-400">⚠️</span>
-            <h3 className="text-yellow-400 font-semibold">Demo Mode</h3>
+      {databases.map(([dbName, dbData]: [string, any]) => (
+        <div key={dbName} className="bg-secondary/50 border border-primary/20 rounded-lg p-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-primary">{dbName}</h3>
+            <span className="text-sm text-muted-foreground">
+              {dbData.Size} {dbData.Size === 1 ? "record" : "records"}
+            </span>
           </div>
-          <p className="text-yellow-300 mt-1">
-            This is sample data. Configure OSINT_API_TOKEN environment variable for real search results.
-          </p>
+
+          <div className="space-y-2">
+            {dbData.Data?.map((record: any, index: number) => (
+              <div key={index} className="p-3 bg-background/50 rounded border border-primary/10">
+                {Object.entries(record).map(([key, value]: [string, any]) => (
+                  <div key={key} className="flex justify-between py-1">
+                    <span className="text-muted-foreground capitalize">{key}:</span>
+                    <span className="text-foreground font-mono text-sm">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }

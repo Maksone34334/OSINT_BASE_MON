@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock data - in production, use a real database
+export const dynamic = "force-dynamic"
+
 const PENDING_REGISTRATIONS: Array<{
   id: string
   email: string
@@ -15,26 +16,8 @@ const USERS: Array<{
   password: string
   status: "active" | "pending" | "blocked"
   createdAt: string
-}> = [
-  {
-    id: "1",
-    email: "admin@example.com",
-    login: "admin",
-    password: "admin123",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "2",
-    email: "demo@example.com",
-    login: "demo",
-    password: "demo123",
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-]
+}> = []
 
-// Get all pending registrations
 export async function GET() {
   return NextResponse.json({
     pendingRegistrations: PENDING_REGISTRATIONS,
@@ -42,7 +25,6 @@ export async function GET() {
   })
 }
 
-// Approve or reject registration
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -62,12 +44,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Login and password are required for approval" }, { status: 400 })
       }
 
-      // Create new user
       const newUser = {
         id: Date.now().toString(),
         email: registration.email,
         login,
-        password, // In production, hash the password
+        password,
         status: "active" as const,
         createdAt: new Date().toISOString(),
       }
@@ -75,19 +56,13 @@ export async function POST(request: NextRequest) {
       USERS.push(newUser)
       registration.status = "approved"
 
-      console.log(`✅ Registration approved: ${registration.email} -> ${login}`)
-
-      // In production, send email with credentials to user
-
       return NextResponse.json({
         success: true,
         message: "Registration approved and user created",
-        user: { ...newUser, password: undefined }, // Don't return password
+        user: { ...newUser, password: undefined },
       })
     } else if (action === "reject") {
       registration.status = "rejected"
-
-      console.log(`❌ Registration rejected: ${registration.email}`)
 
       return NextResponse.json({
         success: true,
@@ -97,7 +72,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid action. Use 'approve' or 'reject'" }, { status: 400 })
     }
   } catch (error: any) {
-    console.error("Admin registration error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { findUser } from "../users"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -10,22 +12,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Login and password are required" }, { status: 400 })
     }
 
-    // Найти пользователя в переменных окружения
     const user = findUser(login, password)
 
     if (!user) {
-      console.log(`❌ Failed login attempt: ${login} from IP: ${request.ip || "unknown"}`)
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // Генерируем токен с секретом из .env
-    const sessionSecret = process.env.OSINT_SESSION_SECRET || "default-secret"
+    const sessionSecret = process.env.OSINT_SESSION_SECRET
+    if (!sessionSecret) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
+
     const token = `${sessionSecret}_${user.id}_${Date.now()}`
-
-    // Возвращаем данные без пароля
     const { password: _, ...userWithoutPassword } = user
-
-    console.log(`✅ Successful login: ${user.login} (${user.role}) from IP: ${request.ip || "unknown"}`)
 
     return NextResponse.json({
       success: true,
@@ -33,7 +32,6 @@ export async function POST(request: NextRequest) {
       token,
     })
   } catch (error: any) {
-    console.error("Login error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

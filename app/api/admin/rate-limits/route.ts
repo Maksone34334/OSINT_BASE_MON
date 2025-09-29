@@ -5,20 +5,22 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authorization
     const authHeader = request.headers.get("authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Authorization required" }, { status: 401 })
     }
 
     const token = authHeader.substring(7)
-    const sessionSecret = process.env.OSINT_SESSION_SECRET || "default-secret"
+
+    const sessionSecret = process.env.OSINT_SESSION_SECRET
+    if (!sessionSecret) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+    }
 
     if (!token || !token.startsWith(sessionSecret)) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    // Check if user is admin (basic check - you might want to enhance this)
     if (!token.includes("admin") && !token.includes("jaguar")) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
@@ -31,13 +33,13 @@ export async function GET(request: NextRequest) {
       rateLimits: {
         nftHolders: {
           maxRequests: 200,
-          windowMs: 3600000, // 1 hour
+          windowMs: 3600000,
           activeWallets: nftStats.totalWallets,
           ...nftStats,
         },
         regularUsers: {
           maxRequests: 50,
-          windowMs: 3600000, // 1 hour
+          windowMs: 3600000,
           activeUsers: regularStats.totalWallets,
           ...regularStats,
         },
@@ -45,7 +47,6 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
-    console.error("Rate limits API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
