@@ -212,6 +212,8 @@ export default function OSINTHub() {
   }
 
   const makeSearch = async () => {
+    console.log("[v0] Starting search for query:", query)
+
     if (!query.trim()) {
       setError("Please enter a target for analysis")
       return
@@ -228,6 +230,10 @@ export default function OSINTHub() {
 
     try {
       const token = localStorage.getItem("osint_token")
+      console.log("[v0] Using token:", token ? "Token exists" : "No token found")
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
 
       const response = await fetch("/api/search", {
         method: "POST",
@@ -240,14 +246,39 @@ export default function OSINTHub() {
           limit: 1000,
           lang: "en",
         }),
+        signal: controller.signal,
       })
 
-      const data = await response.json()
+      clearTimeout(timeoutId)
+      console.log("[v0] Search API response status:", response.status)
 
-      if (!response.ok) {
-        throw new Error(data.error || "Analysis failed")
+      let data
+      try {
+        data = await response.json()
+        console.log("[v0] Search API response data:", data)
+      } catch (jsonError) {
+        console.error("[v0] Failed to parse JSON response:", jsonError)
+        throw new Error("Server returned invalid response. Please try again.")
       }
 
+      if (!response.ok) {
+        console.log("[v0] Search API error:", data)
+
+        if (response.status === 503) {
+          throw new Error(
+            data.message ||
+              "OSINT service is temporarily unavailable. Please contact administrator to configure the API token.",
+          )
+        } else if (response.status === 401) {
+          throw new Error(data.message || "Authentication failed. Please login again.")
+        } else if (response.status === 429) {
+          throw new Error(`Rate limit exceeded. ${data.message || "Please try again later."}`)
+        } else {
+          throw new Error(data.error || data.message || "Analysis failed")
+        }
+      }
+
+      console.log("[v0] Search completed successfully")
       setApiResponse(data)
 
       toast({
@@ -255,7 +286,16 @@ export default function OSINTHub() {
         description: `Intelligence gathered from ${Object.keys(data.List || {}).length} sources`,
       })
     } catch (error: any) {
-      const errorMsg = error.message
+      console.log("[v0] Search error:", error)
+
+      let errorMsg = error.message
+
+      if (error.name === "AbortError") {
+        errorMsg = "Search request timed out. Please try again."
+      } else if (error.message.includes("Failed to fetch")) {
+        errorMsg = "Network error. Please check your connection and try again."
+      }
+
       setError(errorMsg)
 
       toast({
@@ -843,15 +883,10 @@ export default function OSINTHub() {
           {/* Main Content */}
           <div className="relative z-10 flex flex-col items-center justify-center min-h-[80vh] px-6">
             {/* Status Indicator */}
-            <div className="status-online bg-green-600/20 border-green-500 text-green-400">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+            <div className="status-online bg-green-600/20 border-green-500 text-green-400 text-sm px-3 py-1">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
               SYSTEM ONLINE
             </div>
 
@@ -1100,7 +1135,7 @@ export default function OSINTHub() {
 
           {/* Footer */}
           <footer className="relative z-10 text-center py-6 text-xs text-gray-500 text-reveal">
-            © 2025 OSINT HUB • SECURE INTELLIGENCE PLATFORM
+            {"© 2025 OSINT HUB • SECURE INTELLIGENCE PLATFORM"}
           </footer>
         </div>
       </div>
@@ -1124,15 +1159,10 @@ export default function OSINTHub() {
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="status-online bg-green-600/20 border-green-500 text-green-400">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+          <div className="status-online bg-green-600/20 border-green-500 text-green-400 text-sm px-3 py-1">
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
+            <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span>
             SYSTEM ONLINE
           </div>
           <div className="flex items-center gap-2">
@@ -1238,7 +1268,9 @@ export default function OSINTHub() {
               <CardHeader>
                 <CardTitle className="text-primary">Intelligence Report</CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Data gathered from {Object.keys(apiResponse.List).length} intelligence source(s)
+                  {"Data gathered from "}
+                  {Object.keys(apiResponse.List).length}
+                  {" intelligence source(s)"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1264,7 +1296,9 @@ export default function OSINTHub() {
                             ))}
                             {dbData.Data.length > 5 && (
                               <p className="text-sm text-muted-foreground text-center">
-                                ... and {dbData.Data.length - 5} more records
+                                {"... and "}
+                                {dbData.Data.length - 5}
+                                {" more records"}
                               </p>
                             )}
                           </div>
