@@ -78,10 +78,7 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
       const account = accounts[0]
       setWalletAddress(account)
 
-      // Switch to Monad Testnet if needed
-      await switchToMonadTestnet()
-
-      // Verify NFT ownership
+      // Verify NFT ownership immediately after connection
       await verifyNFTOwnership(account)
 
       toast({
@@ -101,11 +98,22 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
     }
   }
 
-  const switchToMonadTestnet = async () => {
+  const switchToNetwork = async (
+    chainId: string,
+    networkName: string,
+    rpcUrl: string,
+    explorerUrl: string,
+    symbol: string,
+  ) => {
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: MONAD_TESTNET_CHAIN_ID }],
+        params: [{ chainId }],
+      })
+
+      toast({
+        title: "Network Switched",
+        description: `Successfully switched to ${networkName}`,
       })
     } catch (switchError: any) {
       // Chain not added to MetaMask
@@ -115,23 +123,36 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
             method: "wallet_addEthereumChain",
             params: [
               {
-                chainId: MONAD_TESTNET_CHAIN_ID,
-                chainName: "Monad Testnet",
+                chainId,
+                chainName: networkName,
                 nativeCurrency: {
-                  name: "MON",
-                  symbol: "MON",
+                  name: symbol,
+                  symbol: symbol,
                   decimals: 18,
                 },
-                rpcUrls: ["https://testnet-rpc.monad.xyz"],
-                blockExplorerUrls: ["https://testnet-explorer.monad.xyz"],
+                rpcUrls: [rpcUrl],
+                blockExplorerUrls: [explorerUrl],
               },
             ],
           })
+
+          toast({
+            title: "Network Added",
+            description: `${networkName} has been added to MetaMask`,
+          })
         } catch (addError) {
-          throw new Error("Failed to add Monad Testnet to MetaMask")
+          toast({
+            title: "Failed to Add Network",
+            description: `Could not add ${networkName} to MetaMask`,
+            variant: "destructive",
+          })
         }
       } else {
-        throw new Error("Failed to switch to Monad Testnet")
+        toast({
+          title: "Network Switch Failed",
+          description: `Could not switch to ${networkName}`,
+          variant: "destructive",
+        })
       }
     }
   }
@@ -215,7 +236,13 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
         }),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error("Failed to parse response as JSON:", jsonError)
+        throw new Error("Server returned invalid response. Please try again.")
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Authentication failed")
@@ -288,6 +315,41 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
                   {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
                 </Badge>
               </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={() =>
+                    switchToNetwork(
+                      BASE_MAINNET_CHAIN_ID,
+                      "Base Mainnet",
+                      "https://mainnet.base.org",
+                      "https://basescan.org",
+                      "ETH",
+                    )
+                  }
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                >
+                  Switch to Base
+                </Button>
+                <Button
+                  onClick={() =>
+                    switchToNetwork(
+                      MONAD_TESTNET_CHAIN_ID,
+                      "Monad Testnet",
+                      "https://testnet-rpc.monad.xyz",
+                      "https://testnet-explorer.monad.xyz",
+                      "MON",
+                    )
+                  }
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                >
+                  Switch to Monad
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -327,29 +389,8 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
                 <strong>Required NFT Contracts:</strong>
               </p>
 
-              {/* Monad Contract */}
+              {/* Base Contract - now shown first */}
               <div className="mb-3 pb-2 border-b border-primary/10">
-                <div className="flex items-center justify-between mb-1">
-                  <code className="text-primary text-xs">
-                    {NFT_CONTRACT_MONAD.slice(0, 10)}...{NFT_CONTRACT_MONAD.slice(-8)}
-                  </code>
-                  <a
-                    href={`https://testnet-explorer.monad.xyz/address/${NFT_CONTRACT_MONAD}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-primary/80"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <p className="text-xs">Network: Monad Testnet</p>
-                {nftStatus.details?.monad && (
-                  <p className="text-xs text-green-400">Balance: {nftStatus.details.monad.balance} NFT(s)</p>
-                )}
-              </div>
-
-              {/* Base Mainnet Contract */}
-              <div>
                 <div className="flex items-center justify-between mb-1">
                   <code className="text-primary text-xs">
                     {NFT_CONTRACT_BASE.slice(0, 10)}...{NFT_CONTRACT_BASE.slice(-8)}
@@ -366,6 +407,27 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
                 <p className="text-xs">Network: Base Mainnet</p>
                 {nftStatus.details?.base && (
                   <p className="text-xs text-green-400">Balance: {nftStatus.details.base.balance} NFT(s)</p>
+                )}
+              </div>
+
+              {/* Monad Contract */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <code className="text-primary text-xs">
+                    {NFT_CONTRACT_MONAD.slice(0, 10)}...{NFT_CONTRACT_MONAD.slice(-8)}
+                  </code>
+                  <a
+                    href={`https://testnet-explorer.monad.xyz/address/${NFT_CONTRACT_MONAD}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <p className="text-xs">Network: Monad Testnet</p>
+                {nftStatus.details?.monad && (
+                  <p className="text-xs text-green-400">Balance: {nftStatus.details.monad.balance} NFT(s)</p>
                 )}
               </div>
             </div>
@@ -395,7 +457,7 @@ export default function WalletConnect({ onAuthSuccess }: WalletConnectProps) {
             {nftStatus.checked && !nftStatus.hasNFT && (
               <Alert className="bg-yellow-900/50 border-yellow-700">
                 <AlertDescription className="text-yellow-200">
-                  You need to own an NFT from one of the authorized collections (Monad Testnet or Base Mainnet) to
+                  You need to own an NFT from one of the authorized collections (Base Mainnet or Monad Testnet) to
                   access this service. Please acquire an NFT and try again.
                 </AlertDescription>
               </Alert>

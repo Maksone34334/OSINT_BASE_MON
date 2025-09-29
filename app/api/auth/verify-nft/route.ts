@@ -95,27 +95,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const [monadBalance, baseBalance] = await Promise.all([
-      checkNFTBalance(MONAD_TESTNET_RPC, NFT_CONTRACT_ADDRESS_MONAD, walletAddress).catch(() => 0),
-      checkNFTBalanceWithFallback(BASE_MAINNET_RPCS, NFT_CONTRACT_ADDRESS_BASE, walletAddress),
-    ])
+    let baseBalance = 0
+    let monadBalance = 0
+
+    try {
+      // Check Base Mainnet first
+      baseBalance = await checkNFTBalanceWithFallback(BASE_MAINNET_RPCS, NFT_CONTRACT_ADDRESS_BASE, walletAddress)
+
+      // If user has NFT on Base, we can skip Monad check for faster response
+      // Or check Monad anyway for complete information
+      monadBalance = await checkNFTBalance(MONAD_TESTNET_RPC, NFT_CONTRACT_ADDRESS_MONAD, walletAddress).catch(() => 0)
+    } catch (error) {
+      console.error("Network check error:", error)
+      // If Base fails, still try Monad
+      monadBalance = await checkNFTBalance(MONAD_TESTNET_RPC, NFT_CONTRACT_ADDRESS_MONAD, walletAddress).catch(() => 0)
+    }
 
     const totalBalance = monadBalance + baseBalance
     const hasNFT = totalBalance > 0
 
     const networks = []
-    if (monadBalance > 0) {
-      networks.push({
-        name: "Monad Testnet",
-        balance: monadBalance,
-        contractAddress: NFT_CONTRACT_ADDRESS_MONAD,
-      })
-    }
     if (baseBalance > 0) {
       networks.push({
         name: "Base Mainnet",
         balance: baseBalance,
         contractAddress: NFT_CONTRACT_ADDRESS_BASE,
+      })
+    }
+    if (monadBalance > 0) {
+      networks.push({
+        name: "Monad Testnet",
+        balance: monadBalance,
+        contractAddress: NFT_CONTRACT_ADDRESS_MONAD,
       })
     }
 
@@ -126,17 +137,17 @@ export async function POST(request: NextRequest) {
       baseBalance,
       networks,
       details: {
-        monad: {
-          hasNFT: monadBalance > 0,
-          balance: monadBalance,
-          contractAddress: NFT_CONTRACT_ADDRESS_MONAD,
-          network: "Monad Testnet",
-        },
         base: {
           hasNFT: baseBalance > 0,
           balance: baseBalance,
           contractAddress: NFT_CONTRACT_ADDRESS_BASE,
           network: "Base Mainnet",
+        },
+        monad: {
+          hasNFT: monadBalance > 0,
+          balance: monadBalance,
+          contractAddress: NFT_CONTRACT_ADDRESS_MONAD,
+          network: "Monad Testnet",
         },
       },
     })
