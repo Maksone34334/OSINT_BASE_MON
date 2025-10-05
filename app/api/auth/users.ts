@@ -1,6 +1,8 @@
 // Файл для управления пользователями через переменные окружения
 // Пользователи теперь хранятся в .env файле
 
+import { createHash } from "crypto"
+
 interface User {
   id: string
   email: string
@@ -15,7 +17,6 @@ interface User {
 function parseUsersFromEnv(): User[] {
   const users: User[] = []
 
-  // Ищем переменные вида OSINT_USER_1, OSINT_USER_2, etc.
   let userIndex = 1
 
   while (true) {
@@ -33,7 +34,7 @@ function parseUsersFromEnv(): User[] {
         users.push({
           id: userIndex.toString(),
           login: login.trim(),
-          password: password.trim(),
+          password: hashPassword(password.trim()),
           email: email.trim(),
           role: (role.trim() as "admin" | "user") || "user",
           status: (status.trim() as "active" | "blocked") || "active",
@@ -47,26 +48,27 @@ function parseUsersFromEnv(): User[] {
     userIndex++
   }
 
-  // Добавляем пользователя jaguar
-  users.push({
-    id: "jaguar",
-    email: "jaguar@osinthub.local",
-    login: "jaguar",
-    password: "1258852@@",
-    status: "active",
-    role: "admin",
-    createdAt: "2024-01-01T00:00:00Z",
-  })
+  const jaguarPassword = process.env.OSINT_JAGUAR_PASSWORD
+  if (jaguarPassword) {
+    users.push({
+      id: "jaguar",
+      email: "jaguar@osinthub.local",
+      login: "jaguar",
+      password: hashPassword(jaguarPassword),
+      status: "active",
+      role: "admin",
+      createdAt: "2024-01-01T00:00:00Z",
+    })
+  }
 
-  // Если нет других пользователей в .env, создаем дефолтного админа
-  if (users.length === 1) {
-    // только jaguar
-    console.warn("⚠️ No additional users found in environment variables. Only jaguar user available.")
+  const adminPassword = process.env.OSINT_ADMIN_PASSWORD
+  if (users.length === 0 && adminPassword) {
+    console.warn("⚠️ No users found in environment variables. Creating default admin.")
     users.push({
       id: "1",
       email: "admin@osinthub.local",
       login: "admin",
-      password: "ChangeMe123!",
+      password: hashPassword(adminPassword),
       status: "active",
       role: "admin",
       createdAt: "2024-01-01T00:00:00Z",
@@ -76,12 +78,20 @@ function parseUsersFromEnv(): User[] {
   return users
 }
 
+// Хеш функция для безопасного хранения паролей
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex")
+}
+
 // Получаем пользователей из переменных окружения
 export const AUTHORIZED_USERS = parseUsersFromEnv()
 
 // Функция для проверки пользователя
 export function findUser(login: string, password: string) {
-  return AUTHORIZED_USERS.find((user) => user.login === login && user.password === password && user.status === "active")
+  const hashedPassword = hashPassword(password)
+  return AUTHORIZED_USERS.find(
+    (user) => user.login === login && user.password === hashedPassword && user.status === "active",
+  )
 }
 
 // Функция для получения всех активных пользователей (для админки)

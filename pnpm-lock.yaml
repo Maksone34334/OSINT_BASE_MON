@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^3.9.1
-        version: 3.9.1(react-hook-form@7.63.0(react@18.0.0))
+        version: 3.9.1(react-hook-form@7.64.0(react@18.0.0))
       '@radix-ui/react-accordion':
         specifier: latest
         version: 1.2.12(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
@@ -108,7 +108,7 @@ importers:
         specifier: latest
         version: 1.1.1(@types/react-dom@18.0.0)(@types/react@18.0.0)(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
       crypto:
-        specifier: 1.0.1
+        specifier: latest
         version: 1.0.1
       date-fns:
         specifier: 4.1.0
@@ -142,7 +142,7 @@ importers:
         version: 18.0.0(react@18.0.0)
       react-hook-form:
         specifier: latest
-        version: 7.63.0(react@18.0.0)
+        version: 7.64.0(react@18.0.0)
       react-resizable-panels:
         specifier: latest
         version: 3.0.6(react-dom@18.0.0(react@18.0.0))(react@18.0.0)
@@ -1500,8 +1500,8 @@ packages:
     peerDependencies:
       react: ^18.0.0
 
-  react-hook-form@7.63.0:
-    resolution: {integrity: sha512-ZwueDMvUeucovM2VjkCf7zIHcs1aAlDimZu2Hvel5C5907gUzMpm4xCrQXtRzCvsBqFjonB4m3x4LzCFI1ZKWA==}
+  react-hook-form@7.64.0:
+    resolution: {integrity: sha512-fnN+vvTiMLnRqKNTVhDysdrUay0kUUAymQnFIznmgDvapjveUWOOPqMNzPg+A+0yf9DuE2h6xzBjN1s+Qx8wcg==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -1797,9 +1797,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@hookform/resolvers@3.9.1(react-hook-form@7.63.0(react@18.0.0))':
+  '@hookform/resolvers@3.9.1(react-hook-form@7.64.0(react@18.0.0))':
     dependencies:
-      react-hook-form: 7.63.0(react@18.0.0)
+      react-hook-form: 7.64.0(react@18.0.0)
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -3054,7 +3054,7 @@ snapshots:
       react: 18.0.0
       scheduler: 0.21.0
 
-  react-hook-form@7.63.0(react@18.0.0):
+  react-hook-form@7.64.0(react@18.0.0):
     dependencies:
       react: 18.0.0
 
